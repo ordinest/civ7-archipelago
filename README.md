@@ -118,6 +118,15 @@ python tests/setup_mod_install.py
 Launch Civ 7. Enable "Civilization VII Archipelago" in the in-game mod
 browser. Start a single-player game.
 
+Place a player YAML for your slot in your Archipelago install's
+`Players/` directory. A starter template lives at
+[`civilization_vii.yaml`](civilization_vii.yaml) at this repo's root.
+Edit the `name:` line and any options, then copy:
+
+```bash
+cp civilization_vii.yaml path/to/Archipelago/Players/yourname.yaml
+```
+
 Generate a seed (run from anywhere with the Archipelago venv on path):
 
 ```bash

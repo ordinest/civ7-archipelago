@@ -1,0 +1,27 @@
+# Civilization VII - Archipelago player YAML.
+#
+# Edit this file (slot name, options) and drop it into your Archipelago
+# install's `Players/` directory before running `Generate.py`. The
+# generator reads every YAML in that directory and creates one
+# multiworld slot per file.
+
+# The player slot name as it appears in the multiworld. Must be unique
+# across all slots in a given seed.
+name: YourSlotName
+
+# The game this slot is playing. Must match exactly.
+game: Civilization VII
+
+# Optional human-readable description for your own reference.
+description: Civ 7 slot
+
+# Per-game options.
+Civilization VII:
+  # Death Link: when on, dying in any death-linked game kills death-linked
+  # players in their games too. Civ 7 has no clear "death" event, so this
+  # has no effect on the Civ 7 side at present. Default false.
+  death_link: false
+
+# Common Archipelago options can also live here. See the Archipelago
+# documentation for the full list (accessibility, progression_balancing,
+# item_links, start_inventory, etc.). Leaving them unset uses defaults.
