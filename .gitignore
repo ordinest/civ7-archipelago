@@ -12,3 +12,4 @@ htmlcov/
 
 # Internal design notes; kept locally, not pushed to the public remote.
 docs/DESIGN.md
+docs/ROADMAP.md
