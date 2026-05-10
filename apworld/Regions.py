@@ -7,6 +7,13 @@ the Civ 6 AP precedent (era-as-region with progressive era unlocks).
 
 from BaseClasses import MultiWorld, Region
 
+from .data.extras import (
+    PANTHEON_LOCATION_NAME,
+    RELIGION_FOUNDED_LOCATION_NAME,
+    all_discovery_locations,
+    all_religion_belief_locations,
+    all_wonder_locations,
+)
 from .data.nodes import Age
 from .data.registry import progression_nodes
 from .Items import PROGRESSIVE_AGE_ITEM
@@ -57,8 +64,15 @@ def create_regions(world: "Civ7World") -> None:  # noqa: F821 (forward reference
             ),
         )
 
-    # Wire all locations into their region.
+    disabled = _disabled_location_names(world)
+
+    # Wire all locations into their region, except those disabled by
+    # YAML toggles. The static LOCATION_TABLE keeps location_name_to_id
+    # stable across slots; the toggles only control which locations are
+    # actually created in this slot's regions.
     for loc_name, loc_data in LOCATION_TABLE.items():
+        if loc_name in disabled:
+            continue
         region = age_regions.get(Age(loc_data.region))
         if region is None:
             raise RuntimeError(
@@ -67,3 +81,27 @@ def create_regions(world: "Civ7World") -> None:  # noqa: F821 (forward reference
             )
         loc = Civ7Location(player, loc_name, loc_data.code, region)
         region.locations.append(loc)
+
+
+def _disabled_location_names(world: "Civ7World") -> set[str]:  # noqa: F821
+    """Names of locations the slot's options have switched off."""
+    disabled: set[str] = set()
+    options = world.options
+
+    if not options.pantheon_check.value:
+        disabled.add(PANTHEON_LOCATION_NAME)
+
+    if not options.religion_checks.value:
+        disabled.add(RELIGION_FOUNDED_LOCATION_NAME)
+        for _slot, name in all_religion_belief_locations():
+            disabled.add(name)
+
+    if not options.wonder_checks.value:
+        for _age, _slot, name in all_wonder_locations():
+            disabled.add(name)
+
+    if not options.discovery_checks.value:
+        for _age, _slot, name in all_discovery_locations():
+            disabled.add(name)
+
+    return disabled

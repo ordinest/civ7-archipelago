@@ -85,17 +85,40 @@ _SPECIAL_LOCATION_NAME_TO_CODE: dict[str, int] = {
 }
 
 
+# Civ 7 internal node ID -> AP mastery-location code. The mod queues
+# "MASTERY:<node_id>" for the second completion of a tree node; this map
+# resolves the node ID part to the mastery location.
+_MASTERY_NODE_TO_CODE: dict[str, int] = {}
+for _data in LOCATION_TABLE.values():
+    if _data.civ7_node_id is not None and "Mastery:" in _data.name:
+        _MASTERY_NODE_TO_CODE[_data.civ7_node_id] = _data.code
+
+
 def resolve_location_to_code(node_id: str) -> int | None:
-    """Map a Civ 7 internal node ID (or AP location name) to its AP location code."""
+    """Map a queued mod-side string to its AP location code.
+
+    The mod queues several string formats:
+      - Civ 7 internal node ID for tech/civic base completions and
+        Legacy Path milestones; resolved via _LOCATION_NODE_TO_CODE.
+      - "MASTERY:<node_id>" for second-tier (mastery) completions.
+      - "AP_ATTRIBUTE_POINT_<N>" for cumulative-attribute milestones.
+      - AP location *display name* for pure-check locations introduced
+        in caps 6-9 (Pantheon, Religion, Belief, Wonder, Discovery).
+    """
     if node_id in _LOCATION_NODE_TO_CODE:
         return _LOCATION_NODE_TO_CODE[node_id]
-    # Attribute-point synthetic IDs are emitted as "AP_ATTRIBUTE_POINT_<N>";
-    # the apworld names them "Attribute Points Earned: <N>".
+
+    if node_id.startswith("MASTERY:"):
+        underlying = node_id.removeprefix("MASTERY:")
+        return _MASTERY_NODE_TO_CODE.get(underlying)
+
     if node_id.startswith("AP_ATTRIBUTE_POINT_"):
         n = node_id.removeprefix("AP_ATTRIBUTE_POINT_")
         ap_name = f"Attribute Points Earned: {n}"
         return _SPECIAL_LOCATION_NAME_TO_CODE.get(ap_name)
-    return None
+
+    # Direct AP location-name fallback for pure-check locations.
+    return _SPECIAL_LOCATION_NAME_TO_CODE.get(node_id)
 
 
 # AP item code (int) -> AP item name (string) for delivery to the mod.

@@ -2,6 +2,42 @@
 // Do not edit by hand. Re-run the build script after registry changes.
 
 Game._AP_ITEM_TO_NODE = {
+    "Antiquity Civ Civic Tree Slot 1": {
+        "age": "Antiquity",
+        "kind": "civ_civic_slot",
+        "slot": 1
+    },
+    "Antiquity Civ Civic Tree Slot 2": {
+        "age": "Antiquity",
+        "kind": "civ_civic_slot",
+        "slot": 2
+    },
+    "Antiquity Civ Civic Tree Slot 3": {
+        "age": "Antiquity",
+        "kind": "civ_civic_slot",
+        "slot": 3
+    },
+    "Antiquity Civ Civic Tree Slot 4": {
+        "age": "Antiquity",
+        "kind": "civ_civic_slot",
+        "slot": 4
+    },
+    "Antiquity Civic Mastery: Citizenship": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_AQ_MAIN_CITIZENSHIP"
+    },
+    "Antiquity Civic Mastery: Code of Laws": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_AQ_MAIN_CODE_OF_LAWS"
+    },
+    "Antiquity Civic Mastery: Discipline": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_AQ_MAIN_DISCIPLINE"
+    },
+    "Antiquity Civic Mastery: Mysticism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_AQ_MAIN_MYSTICISM"
+    },
     "Antiquity Civic: Citizenship": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_AQ_MAIN_CITIZENSHIP"
@@ -53,6 +89,102 @@ Game._AP_ITEM_TO_NODE = {
     "Antiquity Civic: Tactics": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_AQ_MAIN_TACTICS"
+    },
+    "Antiquity Legacy Path: Culture 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_CULTURE",
+        "milestone": 1
+    },
+    "Antiquity Legacy Path: Culture 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_CULTURE",
+        "milestone": 2
+    },
+    "Antiquity Legacy Path: Culture 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_CULTURE",
+        "milestone": 3
+    },
+    "Antiquity Legacy Path: Economic 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_ECONOMIC",
+        "milestone": 1
+    },
+    "Antiquity Legacy Path: Economic 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_ECONOMIC",
+        "milestone": 2
+    },
+    "Antiquity Legacy Path: Economic 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_ECONOMIC",
+        "milestone": 3
+    },
+    "Antiquity Legacy Path: Military 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_MILITARY",
+        "milestone": 1
+    },
+    "Antiquity Legacy Path: Military 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_MILITARY",
+        "milestone": 2
+    },
+    "Antiquity Legacy Path: Military 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_MILITARY",
+        "milestone": 3
+    },
+    "Antiquity Legacy Path: Science 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_SCIENCE",
+        "milestone": 1
+    },
+    "Antiquity Legacy Path: Science 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_SCIENCE",
+        "milestone": 2
+    },
+    "Antiquity Legacy Path: Science 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_ANTIQUITY_SCIENCE",
+        "milestone": 3
+    },
+    "Antiquity Tech Mastery: Bronze Working": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_BRONZE_WORKING"
+    },
+    "Antiquity Tech Mastery: Currency": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_CURRENCY"
+    },
+    "Antiquity Tech Mastery: Engineering": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_ENGINEERING"
+    },
+    "Antiquity Tech Mastery: Masonry": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_MASONRY"
+    },
+    "Antiquity Tech Mastery: Mathematics": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_MATHEMATICS"
+    },
+    "Antiquity Tech Mastery: Military Training": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_MILITARY_TRAINING"
+    },
+    "Antiquity Tech Mastery: Navigation": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_NAVIGATION"
+    },
+    "Antiquity Tech Mastery: Wheel": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_WHEEL"
+    },
+    "Antiquity Tech Mastery: Writing": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_AQ_WRITING"
     },
     "Antiquity Tech: Animal Husbandry": {
         "kind": "tree_node",
@@ -117,6 +249,50 @@ Game._AP_ITEM_TO_NODE = {
     "Attribute Point": {
         "kind": "attribute_point"
     },
+    "Exploration Civ Civic Tree Slot 1": {
+        "age": "Exploration",
+        "kind": "civ_civic_slot",
+        "slot": 1
+    },
+    "Exploration Civ Civic Tree Slot 2": {
+        "age": "Exploration",
+        "kind": "civ_civic_slot",
+        "slot": 2
+    },
+    "Exploration Civ Civic Tree Slot 3": {
+        "age": "Exploration",
+        "kind": "civ_civic_slot",
+        "slot": 3
+    },
+    "Exploration Civ Civic Tree Slot 4": {
+        "age": "Exploration",
+        "kind": "civ_civic_slot",
+        "slot": 4
+    },
+    "Exploration Civic Mastery: Authority": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_AUTHORITY"
+    },
+    "Exploration Civic Mastery: Colonialism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_COLONIALISM"
+    },
+    "Exploration Civic Mastery: Imperialism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_IMPERIALISM"
+    },
+    "Exploration Civic Mastery: Social Class": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_SOCIAL_CLASS"
+    },
+    "Exploration Civic Mastery: Society": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_SOCIETY"
+    },
+    "Exploration Civic Mastery: Sovereignty": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_EX_MAIN_SOVEREIGNTY"
+    },
     "Exploration Civic: Authority": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_EX_MAIN_AUTHORITY"
@@ -160,6 +336,102 @@ Game._AP_ITEM_TO_NODE = {
     "Exploration Civic: Sovereignty": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_EX_MAIN_SOVEREIGNTY"
+    },
+    "Exploration Legacy Path: Culture 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_CULTURE",
+        "milestone": 1
+    },
+    "Exploration Legacy Path: Culture 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_CULTURE",
+        "milestone": 2
+    },
+    "Exploration Legacy Path: Culture 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_CULTURE",
+        "milestone": 3
+    },
+    "Exploration Legacy Path: Economic 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_ECONOMIC",
+        "milestone": 1
+    },
+    "Exploration Legacy Path: Economic 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_ECONOMIC",
+        "milestone": 2
+    },
+    "Exploration Legacy Path: Economic 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_ECONOMIC",
+        "milestone": 3
+    },
+    "Exploration Legacy Path: Military 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_MILITARY",
+        "milestone": 1
+    },
+    "Exploration Legacy Path: Military 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_MILITARY",
+        "milestone": 2
+    },
+    "Exploration Legacy Path: Military 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_MILITARY",
+        "milestone": 3
+    },
+    "Exploration Legacy Path: Science 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_SCIENCE",
+        "milestone": 1
+    },
+    "Exploration Legacy Path: Science 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_SCIENCE",
+        "milestone": 2
+    },
+    "Exploration Legacy Path: Science 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_EXPLORATION_SCIENCE",
+        "milestone": 3
+    },
+    "Exploration Tech Mastery: Architecture": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_ARCHITECTURE"
+    },
+    "Exploration Tech Mastery: Castles": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_CASTLES"
+    },
+    "Exploration Tech Mastery: Education": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_EDUCATION"
+    },
+    "Exploration Tech Mastery: Feudalism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_FEUDALISM"
+    },
+    "Exploration Tech Mastery: Guilds": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_GUILDS"
+    },
+    "Exploration Tech Mastery: Heraldry": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_HERALDRY"
+    },
+    "Exploration Tech Mastery: Metal Casting": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_METAL_CASTING"
+    },
+    "Exploration Tech Mastery: Metallurgy": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_METALLURGY"
+    },
+    "Exploration Tech Mastery: Shipbuilding": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_EX_SHIPBUILDING"
     },
     "Exploration Tech: Architecture": {
         "kind": "tree_node",
@@ -209,6 +481,46 @@ Game._AP_ITEM_TO_NODE = {
         "kind": "tree_node",
         "node_id": "NODE_TECH_EX_URBAN_PLANNING"
     },
+    "Modern Civ Civic Tree Slot 1": {
+        "age": "Modern",
+        "kind": "civ_civic_slot",
+        "slot": 1
+    },
+    "Modern Civ Civic Tree Slot 2": {
+        "age": "Modern",
+        "kind": "civ_civic_slot",
+        "slot": 2
+    },
+    "Modern Civ Civic Tree Slot 3": {
+        "age": "Modern",
+        "kind": "civ_civic_slot",
+        "slot": 3
+    },
+    "Modern Civ Civic Tree Slot 4": {
+        "age": "Modern",
+        "kind": "civ_civic_slot",
+        "slot": 4
+    },
+    "Modern Civic Mastery: Capitalism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_MO_MAIN_CAPITALISM"
+    },
+    "Modern Civic Mastery: Globalism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_MO_MAIN_GLOBALISM"
+    },
+    "Modern Civic Mastery: Hegemony": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_MO_MAIN_HEGEMONY"
+    },
+    "Modern Civic Mastery: Militarism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_MO_MAIN_MILITARISM"
+    },
+    "Modern Civic Mastery: Nationalism": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_CIVIC_MO_MAIN_NATIONALISM"
+    },
     "Modern Civic: Capitalism": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_MO_MAIN_CAPITALISM"
@@ -248,6 +560,106 @@ Game._AP_ITEM_TO_NODE = {
     "Modern Civic: Political Theory": {
         "kind": "tree_node",
         "node_id": "NODE_CIVIC_MO_MAIN_POLITICAL_THEORY"
+    },
+    "Modern Legacy Path: Culture 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_CULTURE",
+        "milestone": 1
+    },
+    "Modern Legacy Path: Culture 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_CULTURE",
+        "milestone": 2
+    },
+    "Modern Legacy Path: Culture 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_CULTURE",
+        "milestone": 3
+    },
+    "Modern Legacy Path: Economic 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_ECONOMIC",
+        "milestone": 1
+    },
+    "Modern Legacy Path: Economic 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_ECONOMIC",
+        "milestone": 2
+    },
+    "Modern Legacy Path: Economic 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_ECONOMIC",
+        "milestone": 3
+    },
+    "Modern Legacy Path: Military 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_MILITARY",
+        "milestone": 1
+    },
+    "Modern Legacy Path: Military 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_MILITARY",
+        "milestone": 2
+    },
+    "Modern Legacy Path: Military 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_MILITARY",
+        "milestone": 3
+    },
+    "Modern Legacy Path: Science 1": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_SCIENCE",
+        "milestone": 1
+    },
+    "Modern Legacy Path: Science 2": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_SCIENCE",
+        "milestone": 2
+    },
+    "Modern Legacy Path: Science 3": {
+        "kind": "legacy_path",
+        "legacy_path_id": "LEGACY_PATH_MODERN_SCIENCE",
+        "milestone": 3
+    },
+    "Modern Tech Mastery: Aerodynamics": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_AERODYNAMICS"
+    },
+    "Modern Tech Mastery: Armor": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_ARMOR"
+    },
+    "Modern Tech Mastery: Combustion": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_COMBUSTION"
+    },
+    "Modern Tech Mastery: Electricity": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_ELECTRICITY"
+    },
+    "Modern Tech Mastery: Flight": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_FLIGHT"
+    },
+    "Modern Tech Mastery: Industrialization": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_INDUSTRIALIZATION"
+    },
+    "Modern Tech Mastery: Mass Production": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_MASS_PRODUCTION"
+    },
+    "Modern Tech Mastery: Mobilization": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_MOBILIZATION"
+    },
+    "Modern Tech Mastery: Radio": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_RADIO"
+    },
+    "Modern Tech Mastery: Urbanization": {
+        "kind": "tree_node_mastery",
+        "node_id": "NODE_TECH_MO_URBANIZATION"
     },
     "Modern Tech: Aerodynamics": {
         "kind": "tree_node",

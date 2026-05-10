@@ -7,9 +7,9 @@ Each Age has 4 Legacy Paths (Science, Military, Culture, Economic). Each
 path has 3 milestones (1, 2, 3 = Golden Age). 4 paths * 3 * 3 Ages = 36
 location candidates.
 
-These are LOCATIONS only, not items. AP fill places filler at them; in
-game, completing a milestone fires the AP location check. No corresponding
-item exists in the pool.
+Bidirectional: each milestone is BOTH a location (fires when player hits
+it in-game) AND an item (multiworld can deliver the milestone, mod calls
+`Players.LegacyPaths.addLegacyPathEvent` to advance the path).
 """
 
 from dataclasses import dataclass
@@ -37,6 +37,17 @@ class LegacyMilestone:
     @property
     def location_name(self) -> str:
         return f"{self.age.value} Legacy Path: {self.path.value} {self.milestone}"
+
+    @property
+    def item_name(self) -> str:
+        # Same string; locations and items have separate ID spaces so the
+        # collision is fine and keeps the player-facing name identical.
+        return self.location_name
+
+    @property
+    def civ7_legacy_path_id(self) -> str:
+        """The LEGACY_PATH_<AGE>_<TYPE> hash used by addLegacyPathEvent."""
+        return f"LEGACY_PATH_{self.age.value.upper()}_{self.path.value.upper()}"
 
 
 _MILESTONE_PER_AGE = ((LegacyPathType.SCIENCE, "SCIENCE"),

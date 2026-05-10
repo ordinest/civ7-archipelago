@@ -48,3 +48,8 @@ class ProgressionNode:
     @property
     def mastery_location_name(self) -> str:
         return f"{self.age.value} {self.tree.value} Mastery: {self.display}"
+
+    @property
+    def mastery_item_name(self) -> str:
+        """AP item name for the mastery (depth-2) bundle of this node."""
+        return f"{self.age.value} {self.tree.value} Mastery: {self.display}"

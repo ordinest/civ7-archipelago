@@ -51,6 +51,20 @@ def _load_data_module(name: str) -> types.ModuleType:
 sys.modules.setdefault("apworld", types.ModuleType("apworld"))
 sys.modules.setdefault("apworld.data", types.ModuleType("apworld.data"))
 
+# Load extracted data files first (used by bundles).
+EXTRACTED_DIR = DATA_DIR / "extracted"
+sys.modules.setdefault(
+    "apworld.data.extracted", types.ModuleType("apworld.data.extracted")
+)
+for extracted_name in ("tech_unlocks", "civic_unlocks", "civ_unique_trees"):
+    spec = importlib.util.spec_from_file_location(
+        f"apworld.data.extracted.{extracted_name}",
+        EXTRACTED_DIR / f"{extracted_name}.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[f"apworld.data.extracted.{extracted_name}"] = module
+    spec.loader.exec_module(module)
+
 _load_data_module("nodes")
 _load_data_module("antiquity_civics")
 _load_data_module("antiquity_techs")
@@ -58,11 +72,17 @@ _load_data_module("exploration_civics")
 _load_data_module("exploration_techs")
 _load_data_module("modern_civics")
 _load_data_module("modern_techs")
-_load_data_module("legacy_paths")
+legacy_paths = _load_data_module("legacy_paths")
+bundles = _load_data_module("bundles")
 registry = _load_data_module("registry")
+civ_uniques = _load_data_module("civ_uniques")
+
 modern_civics = sys.modules["apworld.data.modern_civics"]
 
 progression_nodes = registry.progression_nodes
+masterable_nodes = registry.masterable_nodes
+LEGACY_MILESTONES = legacy_paths.LEGACY_MILESTONES
+all_civic_tree_items = civ_uniques.all_civic_tree_items
 IDEOLOGY_TIER_1_NODE_ID = modern_civics.IDEOLOGY_TIER_1_NODE_ID
 IDEOLOGY_TIER_2_NODE_ID = modern_civics.IDEOLOGY_TIER_2_NODE_ID
 IDEOLOGY_TIER_3_NODE_ID = modern_civics.IDEOLOGY_TIER_3_NODE_ID
@@ -84,13 +104,25 @@ IDEOLOGY_TIER_NODE_IDS = frozenset({
 
 
 def build_table() -> dict[str, dict]:
-    """Return AP item display name -> { kind, node_id?, tier? }.
+    """Return AP item display name -> { kind, ... }.
 
     Kinds:
-      - "tree_node":      grant via PlayerOperationTypes.GRANT_TREE_NODE
-      - "ideology_tier":  grant the corresponding tier of the player's chosen ideology
-      - "progressive_age": no in-game effect; AP-side region marker
-      - "attribute_point": grant an attribute point via the runtime API
+      - "tree_node":          grant via PlayerOperationTypes.GRANT_TREE_NODE
+                              (FullyUnlock=0 advances by one depth tier).
+      - "tree_node_mastery":  grant a second depth tier on the same node;
+                              the mod calls GRANT_TREE_NODE again.
+      - "ideology_tier":      grant the corresponding tier of the
+                              player's chosen ideology at receive time.
+      - "legacy_path":        advance the named legacy path by one
+                              milestone via Players.LegacyPaths.
+      - "civ_civic_slot":     unlock the player's civ-specific civic
+                              tree node at the given slot index. Side
+                              effect: also unlocks the civ's unique
+                              building tied to that node (per
+                              progression-trees-culture-unique.xml).
+      - "progressive_age":    no in-game effect; AP-side region marker.
+      - "attribute_point":    grant an attribute point via the runtime
+                              API.
     """
     table: dict[str, dict] = {}
 
@@ -106,6 +138,26 @@ def build_table() -> dict[str, dict]:
                 "kind": "tree_node",
                 "node_id": node.node_id,
             }
+
+    for node in masterable_nodes():
+        table[node.mastery_item_name] = {
+            "kind": "tree_node_mastery",
+            "node_id": node.node_id,
+        }
+
+    for ms in LEGACY_MILESTONES:
+        table[ms.item_name] = {
+            "kind": "legacy_path",
+            "legacy_path_id": ms.civ7_legacy_path_id,
+            "milestone": ms.milestone,
+        }
+
+    for age, slot, name in all_civic_tree_items():
+        table[name] = {
+            "kind": "civ_civic_slot",
+            "age": age.value,
+            "slot": slot,
+        }
 
     table[PROGRESSIVE_AGE_ITEM] = {"kind": "progressive_age"}
     table[ATTRIBUTE_POINT_ITEM] = {"kind": "attribute_point"}

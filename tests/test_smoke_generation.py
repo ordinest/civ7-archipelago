@@ -42,12 +42,18 @@ def _refresh_apworld() -> None:
             dest.write_bytes(item.read_bytes())
 
 
-def _ensure_test_yaml() -> None:
-    """Ensure the test player YAML is in Archipelago/Players/."""
+def _ensure_test_yaml(name: str = "test_player.yaml") -> None:
+    """Ensure the named fixture YAML is in Archipelago/Players/.
+
+    Clears any other Civ 7 YAML so the slot under test is the only one
+    Generate.py picks up.
+    """
     target = AP_ROOT / "Players"
     target.mkdir(exist_ok=True)
-    yaml = REPO_ROOT / "tests" / "fixtures" / "test_player.yaml"
-    (target / "test_player.yaml").write_bytes(yaml.read_bytes())
+    for old in target.glob("test_player*.yaml"):
+        old.unlink()
+    yaml = REPO_ROOT / "tests" / "fixtures" / name
+    (target / name).write_bytes(yaml.read_bytes())
 
 
 def test_generation_smoke():
@@ -66,14 +72,43 @@ def test_generation_smoke():
     out = result.stdout + "\n" + result.stderr
 
     # Generation must reach the end of run_generation.py without raising.
-    # Items pool with Phase F (attribute points added):
-    # 76 progression + 2 Progressive Age + 16 Attribute Point + filler.
-    # Locations: 87 + 37 mastery + 36 Legacy + 16 Attribute = 176.
-    # Items: 76 + 2 + 16 + 82 filler = 176.
-    assert "[smoke] item pool size: 176" in out, (
-        f"Item pool not 176. Output:\n{out[-2000:]}"
+    # Locations: 87 base + 43 mastery + 36 Legacy Path + 16 Attribute +
+    # 12 civic-tree slots + 1 pantheon + 1 religion-founded + 4 belief
+    # slots + 9 wonder slots + 15 discovery slots = 224.
+    # Items: 74 base + 43 mastery + 36 LP + 12 civic-tree + 2 PA +
+    # 16 attr = 183 progression; filler = 41 to match.
+    assert "[smoke] item pool size: 224" in out, (
+        f"Item pool not 224. Output:\n{out[-2000:]}"
     )
     assert "world(s)" in out, f"No world summary in output:\n{out[-2000:]}"
+    assert result.returncode == 0, (
+        f"run_generation.py exited {result.returncode}. Output tail:\n{out[-2000:]}"
+    )
+
+
+def test_generation_with_caps_disabled():
+    """Toggling caps 6-9 off shrinks the pool by exactly 30 locations.
+
+    Default-on fixture: 224 locations. All four toggles off removes
+    1 pantheon + 1 religion-founded + 4 belief slots + 9 wonder slots +
+    15 discovery slots = 30, leaving 194 locations and (since the items
+    side is unchanged at 183 progression) 11 filler.
+    """
+    _refresh_apworld()
+    _ensure_test_yaml("test_player_minimal.yaml")
+
+    result = subprocess.run(
+        [_ap_python(), str(REPO_ROOT / "tests" / "run_generation.py")],
+        cwd=str(AP_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    out = result.stdout + "\n" + result.stderr
+
+    assert "[smoke] item pool size: 194" in out, (
+        f"Disabled-caps pool not 194. Output:\n{out[-2000:]}"
+    )
     assert result.returncode == 0, (
         f"run_generation.py exited {result.returncode}. Output tail:\n{out[-2000:]}"
     )

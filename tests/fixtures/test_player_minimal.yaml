@@ -1,0 +1,10 @@
+name: TesterMinimal
+game: Civilization VII
+description: smoke test with all caps 6-9 toggles off
+
+Civilization VII:
+  death_link: false
+  pantheon_check: false
+  religion_checks: false
+  wonder_checks: false
+  discovery_checks: false

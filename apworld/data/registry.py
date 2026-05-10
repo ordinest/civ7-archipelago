@@ -7,6 +7,7 @@ code does not need to know which Age/tree a node belongs to.
 
 from .antiquity_civics import ANTIQUITY_CIVIC_NODES
 from .antiquity_techs import ANTIQUITY_TECH_NODES
+from .bundles import has_mastery as _has_mastery_in_data
 from .exploration_civics import EXPLORATION_CIVIC_NODES
 from .exploration_techs import EXPLORATION_TECH_NODES
 from .modern_civics import MODERN_CIVIC_NODES
@@ -45,4 +46,14 @@ def terminal_nodes() -> tuple[ProgressionNode, ...]:
 
 
 def masterable_nodes() -> tuple[ProgressionNode, ...]:
-    return tuple(n for n in ALL_NODES if n.has_mastery)
+    """Nodes that can usefully be mastered: must have UnlockDepth=2 entries
+    in the extracted XML data, AND not be a free root (free-root masteries
+    aren't AP items because the base isn't an item either).
+
+    The hand-set `has_mastery` flag on each ProgressionNode is treated as
+    a hint; the bundle data is the source of truth.
+    """
+    return tuple(
+        n for n in ALL_NODES
+        if not n.is_free_root and _has_mastery_in_data(n.node_id)
+    )

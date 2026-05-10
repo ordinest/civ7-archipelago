@@ -11,6 +11,16 @@ from dataclasses import dataclass
 
 from BaseClasses import Location
 
+from .data.civ_uniques import (
+    all_civic_tree_locations,
+)
+from .data.extras import (
+    PANTHEON_LOCATION_NAME,
+    RELIGION_FOUNDED_LOCATION_NAME,
+    all_discovery_locations,
+    all_religion_belief_locations,
+    all_wonder_locations,
+)
 from .data.legacy_paths import LEGACY_MILESTONES
 from .data.nodes import Age
 from .data.registry import ALL_NODES, masterable_nodes
@@ -27,6 +37,12 @@ def attribute_point_location_name(n: int) -> str:
     return f"Attribute Points Earned: {n}"
 
 
+# Synthetic event-location name for the normal-victory goal mode. The
+# in-game mod fires this check when any vanilla Civ 7 victory triggers.
+VICTORY_EVENT_LOCATION_NAME = "Civ 7 Victory Trigger"
+VICTORY_EVENT_ITEM_NAME = "Civ 7 Victory"
+
+
 # Item and location ID spaces. AP global; offset from item base to keep
 # disjoint when debugging. See Items.py for the item base.
 CIV_VII_AP_LOCATION_ID_BASE: int = 5042500
@@ -35,7 +51,7 @@ CIV_VII_AP_LOCATION_ID_BASE: int = 5042500
 @dataclass(frozen=True)
 class Civ7LocationData:
     name: str
-    code: int  # AP-global location ID
+    code: int | None  # AP-global location ID; None = event-only location
     region: str
     civ7_node_id: str | None = None  # internal Civ 7 node ID this completion check ties to
 
@@ -99,8 +115,84 @@ def _build_location_table() -> dict[str, Civ7LocationData]:
         )
         next_id += 1
 
+    # Civ-unique progressive locations (capability 5). Per Age:
+    # - civic-tree slot completions (the player completes the Nth node
+    #   of their chosen civ's civic tree)
+    # - unique-building built (the player constructs their civ's Nth
+    #   unique building for the first time)
+    for age, _slot, name in all_civic_tree_locations():
+        table[name] = Civ7LocationData(
+            name=name,
+            code=next_id,
+            region=age.value,
+            civ7_node_id=None,
+        )
+        next_id += 1
+
+    # Cap 6 (Pantheon): pantheon belief is picked in Antiquity in Civ 7.
+    table[PANTHEON_LOCATION_NAME] = Civ7LocationData(
+        name=PANTHEON_LOCATION_NAME,
+        code=next_id,
+        region=Age.ANTIQUITY.value,
+        civ7_node_id=None,
+    )
+    next_id += 1
+
+    # Cap 7 (Religion + Beliefs): religion founding and belief adoption
+    # happen in Exploration Age.
+    table[RELIGION_FOUNDED_LOCATION_NAME] = Civ7LocationData(
+        name=RELIGION_FOUNDED_LOCATION_NAME,
+        code=next_id,
+        region=Age.EXPLORATION.value,
+        civ7_node_id=None,
+    )
+    next_id += 1
+
+    for _slot, name in all_religion_belief_locations():
+        table[name] = Civ7LocationData(
+            name=name,
+            code=next_id,
+            region=Age.EXPLORATION.value,
+            civ7_node_id=None,
+        )
+        next_id += 1
+
+    # Cap 8: Wonders. Three slots per Age, gated by their Age region.
+    for age, _slot, name in all_wonder_locations():
+        table[name] = Civ7LocationData(
+            name=name,
+            code=next_id,
+            region=age.value,
+            civ7_node_id=None,
+        )
+        next_id += 1
+
+    # Cap 9: Discoveries (Goody Huts). Five slots per Age.
+    for age, _slot, name in all_discovery_locations():
+        table[name] = Civ7LocationData(
+            name=name,
+            code=next_id,
+            region=age.value,
+            civ7_node_id=None,
+        )
+        next_id += 1
+
+    # Event location for the normal-victory goal. code=None means it is
+    # not in the AP location-id space and not counted toward
+    # location-vs-item balance. The in-game mod fires it on any Civ 7
+    # victory; the goal=normal_victory completion condition checks for
+    # the locked event item.
+    table[VICTORY_EVENT_LOCATION_NAME] = Civ7LocationData(
+        name=VICTORY_EVENT_LOCATION_NAME,
+        code=None,
+        region=Age.ANTIQUITY.value,
+        civ7_node_id=None,
+    )
+
     return table
 
 
 LOCATION_TABLE: dict[str, Civ7LocationData] = _build_location_table()
-LOCATION_NAME_TO_ID: dict[str, int] = {n: d.code for n, d in LOCATION_TABLE.items()}
+LOCATION_NAME_TO_ID: dict[str, int] = {
+    n: d.code for n, d in LOCATION_TABLE.items() if d.code is not None
+}
