@@ -13,91 +13,43 @@ and adapts it for Civ 7's JavaScript runtime, three-Age structure, and ideology
 branches.
 
 A working v0.3 single-player slot runs end to end. Multi-slot and the in-Age
-cascade are not yet exercised against real seeds. Full design is in
-[`docs/DESIGN.md`](docs/DESIGN.md).
+cascade are not yet exercised against real seeds.
 
 ## What gets randomized
 
-The randomized content comes from the structures Civ 7 itself uses to
-gate progress: the per-Age tech and civic trees, the Mastery system on
-those trees, the Legacy Paths, and the attribute-point pool that drives
-leader development.
+| Civ 7 mechanic | Items | Locations | Notes |
+|---|---:|---:|---|
+| Tech nodes (common trees, all 3 Ages) | 40 | 47 | Free roots (Agriculture, Cartography, Astronomy, Machinery, Academics, Steam Engine, Military Science) get a location check on completion but no item, since vanilla lets you research them from turn 1. |
+| Civic nodes (common trees, all 3 Ages) | 34 | 40 | Free roots (Chiefdom, Economics, Piety, Modernization, Natural History, Social Question) excluded as items for the same reason. Modern's 9 vanilla ideology branches collapse into 3 generic Tier slots resolved at runtime. |
+| Mastery completions | — | 37 | Granted alongside the tech via `FullyUnlock=1`, so no separate item. |
+| Legacy Path milestones | — | 36 | 4 paths × 3 milestones × 3 Ages. Engine has no AP-grantable form. |
+| Attribute-point thresholds | 16 | 16 | Item grants a wildcard attribute point via `addWildcardAttributePoints(1)`. |
+| Progressive Age | 2 | — | AP-side region gate. Age transitions in-game still run through vanilla mechanics; the AP item controls when later-Age locations become fillable. |
+| Filler | 84 | — | Production, gold, settlers, builders, faith, population. |
+| **Total** | **176** | **176** | |
 
-**Items the multiworld can deliver back into your Civ 7 game:**
+Archipelago requires equal pool sizes; the categories are asymmetric by
+necessity. Some Civ 7 events only fire (Legacy Paths, masteries on
+their own, free-root completions) and some can only be granted
+(Progressive Age has no in-game trigger to mirror as a check). Filler
+takes the slack.
 
-- Each tech node from the common (non-civ-specific) tech tree of every
-  Age. Antiquity has 16, Exploration has 15, Modern has 16. Free-root
-  nodes (Agriculture, Cartography/Astronomy/Machinery, Academics/Steam
-  Engine/Military Science) are excluded because vanilla Civ 7 lets you
-  research them from turn 1; an AP unlock for them adds nothing.
-- Each civic node from the common civic tree of every Age. Antiquity 14,
-  Exploration 13, Modern 16 (the last with the progressive-ideology
-  treatment described below). Free roots excluded.
-- A `Progressive Age` item collected once unlocks Exploration access in
-  the apworld's region graph and twice unlocks Modern. The actual Age
-  transition in-game still runs through Civ 7's normal mechanics; the
-  AP item is the multiworld-side gate that controls when later-Age
-  locations become reachable for fill.
-- Attribute Points. A wildcard point lands in the player's identity
-  pool and can be spent on any attribute tree (Cultural, Economic,
-  Militaristic, etc.) just like a point earned through play.
-- Filler. Production and gold boosts, free settlers and builders,
-  faith bursts, population growth. Padding to balance items against
-  locations.
-
-**Locations that fire AP checks when triggered in-game:**
-
-- The first completion of each randomized tech and civic node.
-- A separate Mastery completion check for each masterable node (the
-  Civ 7 second-purchase that grants the UnlockDepth=2 rewards). Roughly
-  37 of these across all three Ages.
-- All 36 Legacy Path milestones: 4 paths (Cultural, Economic, Military,
-  Scientific), 3 milestones each, across 3 Ages.
-- 16 attribute-point milestones at cumulative thresholds. The mod
-  tracks total points earned and fires the next milestone each time
-  one is crossed.
-
-The total pool sits around 184 items and 184 locations. Items pool size
-is padded with filler so the two match.
-
-**Region gating across Ages:**
+Region gating across Ages:
 
 ```
 Antiquity --[Progressive Age 1]--> Exploration --[Progressive Age 2]--> Modern
 ```
 
-Antiquity is reachable from start. Reaching Exploration requires one
-copy of `Progressive Age` in the player's collected items, Modern
-requires two. The win condition is collecting every terminal node
-(Future Tech and Future Civic in each Age).
+Antiquity is reachable from start. Win condition is collecting every
+terminal node (Future Tech and Future Civic in each Age).
 
-**Progressive ideology in Modern.** Civ 7's Modern culture tree has
-nine ideology branch nodes: three starter ideologies and three
-follow-on nodes per ideology. A given playthrough only researches one
-ideology, so the other six branch nodes are unreachable. The apworld
-sidesteps this by declaring three generic items (`Modern Civic:
-Ideology Tier 1`, `Tier 2`, `Tier 3`). The in-game JS mod resolves
-each tier slot to the matching node of whichever ideology the player
-picks at runtime.
-
-**Cross-Age item buffering.** Civ 7's engine only resolves progression
-nodes from the player's currently-active Age. A Modern tech delivered
-during Antiquity can not be granted directly. The mod buffers any such
-item and retries on `PlayerAgeTransitionComplete`, so receiving a
+The mod buffers any item targeting a node outside the player's current
+Age and retries on `PlayerAgeTransitionComplete`, so receiving a
 later-Age unlock early is safe.
 
-**What is not randomized:**
-
-- Civ-specific civic trees. A given playthrough only exposes the trees
-  of the civilizations the player picks per Age, so most of the pool
-  would be unreachable on any seed. These stay vanilla in-game.
-- Religion in Exploration. Civ 7's religion is a Beliefs system rather
-  than a progression tree, so it does not map onto the AP node model.
-  Could be revisited later as Legacy-Path-adjacent event checks.
-- The 98 individual attribute-tree nodes. A player only earns enough
-  points in any single game to fill a fraction of them, so individual
-  nodes-as-locations would always leave most unreachable. The
-  attribute-point milestones above replace them.
+**Not randomized:** civ-specific civic trees (per-game subset too
+small), Exploration religion (Beliefs system, not a tree), individual
+attribute-tree nodes (player point budget covers only a fraction).
 
 ## How it fits together
 

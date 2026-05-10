@@ -2,8 +2,9 @@
 
 Full three-Age design: tech and civic trees across Antiquity,
 Exploration, and Modern, plus mastery completions, Legacy Path
-milestones, and attribute-point milestones. See `docs/DESIGN.md` for
-the full design and `docs/smoke-test-setup.md` for the runtime stack.
+milestones, and attribute-point milestones. See the README for the
+randomized-content summary and `docs/smoke-test-setup.md` for the
+runtime install walkthrough.
 
 The architecture mirrors hesto2's Civ 6 apworld
 (https://github.com/hesto2/civilization_vi_apworld), adapted for Civ 7's

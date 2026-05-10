@@ -5,7 +5,7 @@ Source: Civ 7 install at
 The vanilla file has 19 progression nodes: 10 main tree + 9 ideology
 branch nodes (3 ideologies x 3 nodes each).
 
-Per design (`docs/DESIGN.md`), we apply the **progressive ideology fix**:
+We apply the **progressive ideology fix**:
 the 9 ideology-specific nodes are NOT in the AP pool. Instead, we declare
 3 generic ideology slots (Tier 1, 2, 3). The in-game JS mod maps each
 generic slot onto whichever ideology the player picked at runtime.
