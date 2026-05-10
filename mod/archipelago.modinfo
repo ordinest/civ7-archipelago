@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="civ7-archipelago" version="1"
+	xmlns="ModInfo">
+	<Properties>
+		<Name>Civilization VII Archipelago</Name>
+		<Description>Multiworld randomizer integration for Civilization VII via the Archipelago framework. Bridges in-game tech and civic completions to a local Archipelago client over FireTuner.</Description>
+		<Authors>civ7-archipelago contributors</Authors>
+		<ShowInBrowser>1</ShowInBrowser>
+	</Properties>
+	<Dependencies>
+		<Mod id="base-standard" title="LOC_MODULE_BASE_STANDARD_NAME" />
+	</Dependencies>
+	<ActionCriteria>
+		<Criteria id="always">
+			<AlwaysMet></AlwaysMet>
+		</Criteria>
+	</ActionCriteria>
+	<ActionGroups>
+		<ActionGroup id="archipelago-runtime" scope="game" criteria="always">
+			<Actions>
+				<UIScripts>
+					<Item>scripts/ap_item_map.js</Item>
+					<Item>scripts/archipelago.js</Item>
+				</UIScripts>
+			</Actions>
+		</ActionGroup>
+	</ActionGroups>
+</Mod>

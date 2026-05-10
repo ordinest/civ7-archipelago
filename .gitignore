@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.archipelago/
+*.apworld
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/

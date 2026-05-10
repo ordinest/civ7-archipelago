@@ -1,0 +1,6 @@
+name: Tester
+game: Civilization VII
+description: smoke test for Civ 7 AP world
+
+Civilization VII:
+  death_link: false
