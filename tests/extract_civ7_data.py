@@ -141,6 +141,45 @@ def extract_tech_unlocks() -> None:
     _emit_unlocks("tech_unlocks", per_age)
 
 
+def _parse_node_names(xml_path: Path) -> dict[str, str]:
+    """Return {progression_tree_node_type: LOC_key} for each node in
+    the file's <ProgressionTreeNodes> table.
+    """
+    if not xml_path.exists():
+        return {}
+    tree = ET.parse(xml_path)
+    out: dict[str, str] = {}
+    for row in _find_rows(tree, "ProgressionTreeNodes"):
+        nid = row.get("ProgressionTreeNodeType")
+        name = row.get("Name")
+        if nid and name:
+            out[nid] = name
+    return out
+
+
+def extract_node_names() -> None:
+    """Emit the node_id -> LOC key mapping for every tech/civic node.
+
+    The localization key is needed by the AP client to emit a per-seed
+    <UpdateText> override XML that replaces vanilla node names with the
+    AP item placed at each location.
+    """
+    mapping: dict[str, str] = {}
+    for age, age_dir in AGE_DIRS.items():
+        for fname in (
+            "progression-trees-tech.xml",
+            "progression-trees-culture-common.xml",
+            "progression-trees-culture-unique.xml",
+        ):
+            path = MODULES_ROOT / age_dir / "data" / fname
+            mapping.update(_parse_node_names(path))
+    lines = ["NODE_NAME_LOC_KEYS: dict[str, str] = {\n"]
+    for node_id, loc_key in sorted(mapping.items()):
+        lines.append(f"    {node_id!r}: {loc_key!r},\n")
+    lines.append("}\n")
+    _write_module("node_names", "".join(lines))
+
+
 def extract_civic_unlocks() -> None:
     """Civic-node unlocks span both the common civic tree
     (`progression-trees-culture-common.xml`) and the civilization-
@@ -326,6 +365,7 @@ def main() -> int:
     extract_tech_unlocks()
     extract_civic_unlocks()
     extract_civ_unique_trees()
+    extract_node_names()
     extract_wonders()
     extract_pantheon_beliefs()
     extract_discoveries()

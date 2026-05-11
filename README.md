@@ -8,31 +8,39 @@ AP-supported games. Tech and civic completions in Civ 7 send items to other
 players' games. Items those friends find can come back as tech, civic,
 mastery, or attribute-point unlocks delivered straight into the Civ 7 game.
 
-The architecture follows [hesto2's Civ 6 AP world](https://github.com/hesto2/civilization_vi_apworld)
-and adapts it for Civ 7's JavaScript runtime, three-Age structure, and ideology
-branches.
+The architecture is **mod-only**: the AP client lives inside the Civ 7 mod
+itself, connects to the AP server over WebSocket directly from the mod's
+JavaScript, and mutates Civ 7's database at game-creation time so the
+tech tree, civic tree, and other surfaces render AP item names natively.
+No external Python helper is required at play time.
 
-A working v0.3 single-player slot runs end to end. Multi-slot and the in-Age
-cascade are not yet exercised against real seeds.
+(Patterned originally on [hesto2's Civ 6 AP world](https://github.com/hesto2/civilization_vi_apworld),
+adapted for Civ 7's three-Age structure, ideology branches, narrative
+discoveries, and Coherent Gameface UI runtime.)
 
 ## What gets randomized
 
-| Civ 7 mechanic | Items | Locations | Notes |
-|---|---:|---:|---|
-| Tech nodes (common trees, all 3 Ages) | 40 | 47 | Free roots (Agriculture, Cartography, Astronomy, Machinery, Academics, Steam Engine, Military Science) get a location check on completion but no item, since vanilla lets you research them from turn 1. |
-| Civic nodes (common trees, all 3 Ages) | 34 | 40 | Free roots (Chiefdom, Economics, Piety, Modernization, Natural History, Social Question) excluded as items for the same reason. Modern's 9 vanilla ideology branches collapse into 3 generic Tier slots resolved at runtime. |
-| Mastery completions | — | 37 | Granted alongside the tech via `FullyUnlock=1`, so no separate item. |
-| Legacy Path milestones | — | 36 | 4 paths × 3 milestones × 3 Ages. Engine has no AP-grantable form. |
-| Attribute-point thresholds | 16 | 16 | Item grants a wildcard attribute point via `addWildcardAttributePoints(1)`. |
-| Progressive Age | 2 | — | AP-side region gate. Age transitions in-game still run through vanilla mechanics; the AP item controls when later-Age locations become fillable. |
-| Filler | 84 | — | Production, gold, settlers, builders, faith, population. |
-| **Total** | **176** | **176** | |
+| Civ 7 mechanic                                  |   Items | Locations | Notes                                                                                                                                                                                                   |
+| ----------------------------------------------- | ------: | --------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tech and civic nodes (common trees, all 3 Ages) |      74 |        87 | Free roots get a location check on completion but no item, since vanilla lets you research them from turn 1. Modern's vanilla ideology branches collapse into 3 generic Tier slots resolved at runtime. |
+| Mastery completions                             |      43 |        43 | Item grants the depth-2 unlock via `GRANT_TREE_NODE` with `FullyUnlock=0`.                                                                                                                              |
+| Legacy Path milestones                          |      36 |        36 | 4 paths × 3 milestones × 3 Ages. Item advances the path via `Players.LegacyPaths.addLegacyPathEvent`.                                                                                                   |
+| Civ-unique civic-tree slots                     |      12 |        12 | 4 slots per Age. Resolved at delivery to the player's chosen civilization's unique civic tree. Civs with fewer than 4 nodes leave trailing slots as no-ops.                                             |
+| Pantheon Founded                                |       — |         1 | Antiquity check fired by `PantheonFounded` engine event.                                                                                                                                                |
+| Religion + beliefs                              |       — |         5 | Exploration. 1 `ReligionFounded` check + 4 progressive belief-adopted slots.                                                                                                                            |
+| Wonder Built                                    |       — |        63 | Fired on `WonderCompleted` (deduplicated, since the engine fires it twice per wonder), or on capturing settlement with Wonder in it (in case AI built it first).                                        |
+| Discovery Found slots                           |       — |        15 | 5 per Age. Fired on `NotificationDismissed` filtered by the `CHOOSE_DISCOVERY_STORY_DIRECTION` hash.                                                                                                    |
+| Attribute-point thresholds                      |      16 |        16 | Item grants a wildcard attribute point via `addWildcardAttributePoints(1)`.                                                                                                                             |
+| Progressive Age                                 |       2 |         — | AP-side region gate. Age transitions in-game still run through vanilla mechanics; the AP item controls when later-Age locations become fillable.                                                        |
+| Filler                                          |      95 |         — | Yields (Gold, Happiness, Influence), Units (Settler, Military, Merchant, Commander, Admiral), Settlement Boosts (Population, Production, Food; settlement selected randomly)                            |
+| **Total**                                       | **278** |   **278** | Default; caps 6-9 (Pantheon, Religion, Wonders, Discoveries) are YAML-toggleable, all-off reduces the pool to 194.                                                                                      |
 
 Archipelago requires equal pool sizes; the categories are asymmetric by
-necessity. Some Civ 7 events only fire (Legacy Paths, masteries on
-their own, free-root completions) and some can only be granted
-(Progressive Age has no in-game trigger to mirror as a check). Filler
-takes the slack.
+necessity. Some Civ 7 events only fire (Legacy Paths' locations have
+items now, but pantheon / religion / wonder / discovery checks are
+location-only — the engine has no AP-grantable form) and some can
+only be granted (Progressive Age has no in-game trigger to mirror as
+a check). Filler takes the slack.
 
 Region gating across Ages:
 
@@ -53,51 +61,116 @@ attribute-tree nodes (player point budget covers only a fraction).
 
 ## How it fits together
 
+At the top level there are only two components: the Archipelago server
+that hosts the seed, and Civ 7 with the mod loaded.
+
 ```
-+--------------------+       +-------------------+       +----------------+
-|  Archipelago       | <---> |  Civ7Client.py    | <---> |  Civ 7         |
-|  multiworld server |  ws   |  (Python)         | tuner |  + AP mod (JS) |
-+--------------------+       +-------------------+       +----------------+
++--------------------+                      +-----------------------+
+|  Archipelago       |  <--- WebSocket --->  |  Civ 7 + AP mod (JS) |
+|  multiworld server |                      |                       |
++--------------------+                      +-----------------------+
 ```
+
+The mod is the AP client. There is no external process at play time.
+
+### End-to-end session flow
+
+```
+[Civ 7 main menu — shell scope]
+   |
+   |  Mod loads its AP connection panel.
+   |  Player enters server URL / slot / password and presses Connect.
+   |  Mod opens a WebSocket to the AP server; AP handshake completes;
+   |  the panel reports the slot joined.
+   |
+   v
+[Player presses Start Game]
+   |
+   v
+[Loading screen — game scope]
+   |
+   |  Mod's game-scope script fires.
+   |  Mod scouts the AP server (LocationScouts -> LocationInfo)
+   |  to learn which item each location holds for this seed.
+   |  Mod mutates Civ 7's database so tech / civic / wonder /
+   |  discovery / legacy-path locations carry their AP-item names
+   |  in place of the vanilla LOC strings.
+   |  Civ 7 finishes building the rest of the world.
+   |
+   v
+[In-game]
+   |
+   |  Tech tree, civic tree, and tooltips render AP item names from
+   |  the mutated database -- no UI hooks, no Locale interception.
+   |
+   |  Forward (check) direction:
+   |      Player completes a node -> mod's TechNodeCompleted /
+   |      CultureNodeCompleted / WonderCompleted / NotificationDismissed
+   |      / etc. listener queues the AP location code and sends
+   |      LocationChecks to the AP server.
+   |
+   |  Receive (item) direction:
+   |      AP server pushes a ReceivedItems package -> mod applies the
+   |      effect: GRANT_TREE_NODE for tech / civic / mastery,
+   |      addLegacyPathEvent for legacy paths,
+   |      addWildcardAttributePoints for attribute points, etc.
+   |      Items targeting a later Age get buffered until
+   |      PlayerAgeTransitionComplete fires.
+```
+
+### Pieces of the repo
 
 `apworld/` is the Python AP world. It defines items, locations, regions,
-rules, and options, and lives at `worlds/civ_7/` inside an Archipelago
-install.
+rules, and options. It lives at `worlds/civ_7/` inside an Archipelago
+install and is read by the AP server at generation and play time.
 
-`mod/` is the in-game JavaScript mod that Civ 7 loads via its `<UIScripts>`
-action. It listens for `TechNodeCompleted`, `CultureNodeCompleted`,
-`LegacyPathMilestoneCompleted`, `AttributePointsChanged`, and
-`PlayerAgeTransitionComplete`. It exposes `Game.AP_*` accessors that the
-Python client reads over FireTuner. Granting an item runs through
-`Game.PlayerOperations.sendRequest(..., GRANT_TREE_NODE, ...)` for tech
-and civic, and `player.Identity.addWildcardAttributePoints(N)` for
-attribute points.
+`mod/` is the Civ 7 mod. It contains both **shell-scope** scripts (the AP
+connection panel that loads at the main menu) and **game-scope** scripts
+(the in-game AP client and event handlers that load when a game is
+created or loaded).
 
-`client/Civ7Client.py` is an Archipelago `CommonContext` subclass. It opens
-the AP server websocket, opens a FireTuner socket on `127.0.0.1:4318`, polls
-the in-game queue once a second, sends `LocationChecks` to the server when
-checks accumulate, and forwards `ReceivedItems` into the mod via
-`Game.AP_HandleReceiveItem(name)`.
+`client/Civ7Client.py` exists as developer tooling only. It runs an AP
+client via a FireTuner socket against a live game, used during
+development to drive end-to-end smoke tests without going through the
+in-game UI. Players never need it.
 
 ## Current capability
 
-| Capability | Status |
-|---|---|
-| FireTuner wire protocol (`CMD:65535:` framing, return-value reads) | working |
-| Mod loads into Civ 7 gameplay JS isolate | working |
-| `TechNodeCompleted` / `CultureNodeCompleted` listeners | working |
-| `LegacyPathMilestoneCompleted` listener | working |
-| `AttributePointsChanged` to attribute-point milestone locations | working |
-| Runtime grant of techs and civics via `GRANT_TREE_NODE` | working |
-| Runtime grant of attribute points via `addWildcardAttributePoints` | working |
-| Civ7Client polls and sends `LocationChecks` to the server | working |
-| Civ7Client forwards `ReceivedItems` to the mod | working |
-| Cross-Age item buffering until `PlayerAgeTransitionComplete` | working |
-| Modern ideology slot mapping (waits for player's ideology pick) | partial |
-| Multi-slot multiworld validation | not yet exercised |
-| In-Age cascade against a real seed (no developer-injected seed) | not yet exercised |
+| Capability                                                                                 | Status                                  |
+| ------------------------------------------------------------------------------------------ | --------------------------------------- |
+| Mod loads into Civ 7's UI script isolate                                                   | working                                 |
+| Tech and civic node completions queue AP location checks                                   | working (live-verified)                 |
+| Mastery completions distinguished via `data.nodeDepth === 2`                               | working (live-verified)                 |
+| Civ-unique civic-tree node detection (by tree hash)                                        | working (live-verified)                 |
+| `PantheonFounded` listener                                                                 | working (live-verified)                 |
+| `ReligionFounded` / `BeliefAdded` listeners                                                | wired; not yet exercised in Exploration |
+| `WonderCompleted` with constructible-type deduplication                                    | working (live-verified)                 |
+| Discovery detection via `NotificationDismissed` + type hash                                | working (live-verified)                 |
+| `LegacyPathMilestoneCompleted` listener                                                    | working                                 |
+| Attribute-point milestone queueing                                                         | working                                 |
+| Cross-Age item buffering until `PlayerAgeTransitionComplete`                               | working                                 |
+| Runtime grant of techs / civics / masteries via `GRANT_TREE_NODE`                          | working (live-verified)                 |
+| Runtime grant of legacy paths via `addLegacyPathEvent`                                     | working (live-verified)                 |
+| Civ-unique civic-slot grant (resolved against player's civ)                                | working                                 |
+| In-Age and cross-Age single-slot end-to-end roundtrip                                      | working (live-verified)                 |
+| Modern ideology slot mapping (waits for player's ideology pick)                            | wired; needs Modern-Age verification    |
+| In-game shell-scope AP connection panel                                                    | not yet built                           |
+| In-mod WebSocket AP client                                                                 | not yet built                           |
+| Database mutation at game-creation to display AP item names                                | not yet built                           |
+| Suppression of vanilla unlocks on in-game completion (research-grade randomizer behaviour) | not yet built                           |
+| Multi-slot multiworld validation                                                           | not yet exercised                       |
 
 ## Install
+
+> The **player-facing flow** (open Civ 7 → main menu → AP panel → enter
+> server URL → Connect → Start Game) is the target. The shell-scope panel
+> and in-mod WebSocket client that close out that flow are not yet
+> built; see *Current capability* for which pieces are still pending.
+>
+> The flow documented below is the **developer flow** for running
+> end-to-end smoke tests today. It runs a separate Python AP client and
+> bridges into the mod via FireTuner. Players won't need any of this
+> once the in-game panel ships.
 
 You need Civilization VII (PC), a clone of
 [ArchipelagoMW/Archipelago](https://github.com/ArchipelagoMW/Archipelago)
@@ -141,7 +214,7 @@ python tests/run_server.py \
     path/to/Archipelago/Generated_Output/AP_*.zip
 ```
 
-In a second terminal, start the client:
+In a second terminal, start the dev client:
 
 ```bash
 python client/Civ7Client.py --connect 127.0.0.1:38281 --name Tester

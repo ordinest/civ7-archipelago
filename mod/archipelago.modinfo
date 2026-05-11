@@ -22,6 +22,9 @@
 					<Item>scripts/ap_item_map.js</Item>
 					<Item>scripts/archipelago.js</Item>
 				</UIScripts>
+				<UpdateText>
+					<Item>data/ap_text_overrides.xml</Item>
+				</UpdateText>
 			</Actions>
 		</ActionGroup>
 	</ActionGroups>

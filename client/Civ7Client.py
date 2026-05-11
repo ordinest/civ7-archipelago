@@ -24,6 +24,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 AP_ROOT = Path.home() / "source" / "Archipelago"
 
+# Civ 7 user data lives at %LOCALAPPDATA%\Firaxis Games\Sid Meier's
+# Civilization VII\. The installed mod (where Civ 7 reads modinfo
+# actions from at game start) is here, NOT in the repo source tree.
+CIV7_USERDATA = (
+    Path.home() / "AppData" / "Local" / "Firaxis Games" / "Sid Meier's Civilization VII"
+)
+MOD_INSTALL_DIR = CIV7_USERDATA / "Mods" / "civ7-archipelago"
+
 # Order matters: AP root must precede the project so Archipelago modules
 # resolve before our local namespace.
 sys.path.insert(0, str(AP_ROOT))
@@ -57,6 +65,9 @@ from CommonClient import (  # noqa: E402
 try:
     from worlds.civ_7.Items import ITEM_TABLE  # type: ignore[import-not-found]
     from worlds.civ_7.Locations import LOCATION_TABLE  # type: ignore[import-not-found]
+    from worlds.civ_7.data.extracted.node_names import (  # type: ignore[import-not-found]
+        NODE_NAME_LOC_KEYS,
+    )
 except ImportError as exc:
     raise SystemExit(
         f"Civ 7 apworld not importable. Ensure it is copied to "
@@ -121,6 +132,38 @@ def resolve_location_to_code(node_id: str) -> int | None:
     return _SPECIAL_LOCATION_NAME_TO_CODE.get(node_id)
 
 
+# Reverse map: AP location code -> mod-side identifier. Used to push
+# the location-info table to the mod indexed by the same identifier the
+# tree-rendering code already has handy. Mastery codes get the
+# "MASTERY:<node_id>" form so the mod can look up either kind from a
+# tree-node ID.
+def _build_code_to_modside_identifier() -> dict[int, str]:
+    out: dict[int, str] = {}
+    for name, data in LOCATION_TABLE.items():
+        if data.code is None:
+            continue
+        # Mastery locations share civ7_node_id with their base; key
+        # them under the MASTERY: synthetic prefix so they're
+        # distinguishable from base completions.
+        if data.civ7_node_id is not None:
+            if "Mastery:" in name:
+                out[data.code] = f"MASTERY:{data.civ7_node_id}"
+            else:
+                out[data.code] = data.civ7_node_id
+        elif name.startswith("Attribute Points Earned: "):
+            n = name.removeprefix("Attribute Points Earned: ")
+            out[data.code] = f"AP_ATTRIBUTE_POINT_{n}"
+        else:
+            # Pure-check locations: pantheon, religion, beliefs,
+            # wonders, discoveries, civic-tree slots. The mod queues
+            # these by display name.
+            out[data.code] = name
+    return out
+
+
+_CODE_TO_MODSIDE_IDENTIFIER: dict[int, str] = _build_code_to_modside_identifier()
+
+
 # AP item code (int) -> AP item name (string) for delivery to the mod.
 _ITEM_CODE_TO_NAME: dict[int, str] = {
     data.code: data.name for data in ITEM_TABLE.values()
@@ -170,38 +213,46 @@ class Civ7Context(CommonContext):
         if cmd == "Connected":
             logger.info("Connected to AP server as slot %s.", args.get("slot"))
             self.delivered_item_indexes.clear()
+            asyncio.create_task(self._scout_all_locations())
         elif cmd == "ReceivedItems":
             asyncio.create_task(self._deliver_items(args))
+        elif cmd == "LocationInfo":
+            asyncio.create_task(self._handle_location_info(args))
 
     # ------- Tuner / mod bridge -------
 
     async def ensure_tuner(self) -> bool:
         if self.tuner_connected:
             return True
-        try:
-            await self.tuner.connect()
-        except TunerError as e:
-            logger.warning("FireTuner not reachable yet: %s", e)
-            return False
-        self.tuner_connected = True
-        # Probe for the mod.
-        try:
-            r = await self.tuner.eval_js("typeof Game.AP_Status")
-            if r.body != "function":
-                logger.warning(
-                    "Mod is not loaded (typeof Game.AP_Status = %r). "
-                    "Verify the mod is enabled in Civ 7 and you are in a "
-                    "game session.", r.body)
+        async with self.tuner_lock:
+            # Double-checked locking: another coroutine may have
+            # connected while we were waiting for the lock.
+            if self.tuner_connected:
+                return True
+            try:
+                await self.tuner.connect()
+            except TunerError as e:
+                logger.warning("FireTuner not reachable yet: %s", e)
+                return False
+            self.tuner_connected = True
+            # Probe for the mod.
+            try:
+                r = await self.tuner.eval_js("typeof Game.AP_Status")
+                if r.body != "function":
+                    logger.warning(
+                        "Mod is not loaded (typeof Game.AP_Status = %r). "
+                        "Verify the mod is enabled in Civ 7 and you are in a "
+                        "game session.", r.body)
+                    self.tuner_connected = False
+                    await self.tuner.close()
+                    return False
+            except TunerError as e:
+                logger.warning("Tuner mod probe failed: %s", e)
                 self.tuner_connected = False
                 await self.tuner.close()
                 return False
-        except TunerError as e:
-            logger.warning("Tuner mod probe failed: %s", e)
-            self.tuner_connected = False
-            await self.tuner.close()
-            return False
-        logger.info("FireTuner connected; mod responsive.")
-        return True
+            logger.info("FireTuner connected; mod responsive.")
+            return True
 
     async def pull_checks(self) -> list[int]:
         """Drain the in-game queue and translate to AP location codes."""
@@ -222,6 +273,93 @@ class Civ7Context(CommonContext):
                 continue
             codes.append(code)
         return codes
+
+    async def _scout_all_locations(self) -> None:
+        """Send LocationScouts for every location in our slot.
+
+        AP replies with a LocationInfo package whose `locations` field
+        carries one NetworkItem per scouted location, describing the
+        item placed there and which player receives it. We write the
+        result to the mod's `data/ap_text_overrides.xml` so that Civ 7
+        renders the AP item at each tree-card location natively via
+        the <UpdateText> action on next mod load.
+        """
+        codes = sorted(_CODE_TO_MODSIDE_IDENTIFIER.keys())
+        if not codes:
+            return
+        await self.send_msgs([{
+            "cmd": "LocationScouts",
+            "locations": codes,
+            "create_as_hint": 0,
+        }])
+
+    async def _handle_location_info(self, args: dict) -> None:
+        """Process a LocationInfo reply: build a LOC-key -> AP-item-text
+        map and write the mod's <UpdateText> override file into the
+        installed mod directory. Civ 7 reads the file on next
+        new-game-start, baking AP names into the game's database; the
+        tree-card UI then renders them natively, no runtime UI hooks.
+        """
+        overrides: dict[str, str] = {}
+        for net_item in args.get("locations", []):
+            loc_code = getattr(net_item, "location", None)
+            item_code = getattr(net_item, "item", None)
+            target_slot = getattr(net_item, "player", None)
+            if loc_code is None or item_code is None or target_slot is None:
+                continue
+            identifier = _CODE_TO_MODSIDE_IDENTIFIER.get(loc_code)
+            if identifier is None:
+                continue
+            # Only tree-node locations have a LOC key the engine reads
+            # for display. Mastery, pantheon, religion, wonders,
+            # discoveries, civic-tree slots are pure checks without a
+            # vanilla tree-card name surface, so we skip them here.
+            loc_key = NODE_NAME_LOC_KEYS.get(identifier)
+            if loc_key is None:
+                continue
+            item_name: str | None = None
+            try:
+                item_name = self.item_names.lookup_in_slot(target_slot, item_code)
+            except Exception:
+                pass
+            if not item_name:
+                item_name = resolve_item_code_to_name(item_code)
+            if not item_name:
+                item_name = f"item_{item_code}"
+            overrides[loc_key] = item_name
+        self._write_text_override_file(overrides)
+
+    def _write_text_override_file(self, overrides: dict[str, str]) -> None:
+        """Write the mod's per-seed `data/ap_text_overrides.xml`.
+
+        Civ 7 reads this file via the modinfo's <UpdateText> action at
+        new-game-start. The file must be in the *installed* mod
+        directory (under %LOCALAPPDATA%) — Civ 7 does not load from the
+        source repo.
+        """
+        target_dir = MOD_INSTALL_DIR / "data"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / "ap_text_overrides.xml"
+        lines = [
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<!-- Generated by the Civ 7 AP companion. Per-seed; rewritten on each scout. -->',
+            "<Database>",
+            "    <EnglishText>",
+        ]
+        for loc_key, item_name in sorted(overrides.items()):
+            safe = (item_name
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;"))
+            lines.append(f'        <Replace Tag="{loc_key}">')
+            lines.append(f"            <Text>{safe}</Text>")
+            lines.append("        </Replace>")
+        lines.append("    </EnglishText>")
+        lines.append("</Database>")
+        target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        logger.info(
+            "wrote %d AP text overrides to %s", len(overrides), target
+        )
 
     async def push_item(self, ap_item_name: str) -> bool:
         """Forward a received AP item to the in-game mod."""
@@ -270,6 +408,25 @@ class Civ7Context(CommonContext):
         async with self.tuner_lock:
             r = await self.tuner.eval_js("Game.AP_Status()")
         logger.info("Civ 7 mod status: %s", r.body)
+
+    def run_gui(self) -> None:
+        """Launch the player-facing companion GUI.
+
+        Built on Archipelago's `kvui.GameManager`, which provides the
+        standard AP message-log surface plus auxiliary tabs we register.
+        Mirrors the pattern in `worlds/factorio/Client.py`.
+        """
+        from kvui import GameManager  # lazy import; pulls in Kivy
+
+        class Civ7Manager(GameManager):
+            logging_pairs = [
+                ("Client", "Archipelago"),
+                ("client.TunerClient", "FireTuner"),
+            ]
+            base_title = "Archipelago Civilization VII Companion"
+
+        self.ui = Civ7Manager(self)
+        self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
 
     # ------- Background polling -------
 
