@@ -5,6 +5,8 @@
 		<Name>Civilization VII Archipelago</Name>
 		<Description>Multiworld randomizer integration for Civilization VII via the Archipelago framework. Bridges in-game tech and civic completions to a local Archipelago client over FireTuner.</Description>
 		<Authors>civ7-archipelago contributors</Authors>
+		<Package>Mod</Package>
+		<AffectsSavedGames>0</AffectsSavedGames>
 		<ShowInBrowser>1</ShowInBrowser>
 	</Properties>
 	<Dependencies>
@@ -17,15 +19,46 @@
 	</ActionCriteria>
 	<ActionGroups>
 		<ActionGroup id="archipelago-runtime" scope="game" criteria="always">
+			<Properties>
+				<!-- Load after other text-modifying mods so our per-seed
+				     text overrides win on shared LOC keys. SeelingCat's
+				     Et Cetera uses LoadOrder=100. -->
+				<LoadOrder>500</LoadOrder>
+			</Properties>
 			<Actions>
 				<UIScripts>
 					<Item>scripts/ap_item_map.js</Item>
 					<Item>scripts/archipelago.js</Item>
+					<!-- UI overrides copied verbatim from SeelingCat's
+					     "Et Cetera" Workshop mod. Et Cetera proves out
+					     the per-tier LOC fallback pattern across the
+					     full render chain (tree-card, choosers,
+					     tech-tree screen, sub-system-dock). Identical
+					     file list and load order to that mod, with the
+					     per-seed AP text content swapped in. -->
+					<Item>ui/tree-grid/tree-card.js</Item>
+					<Item>ui/sub-system-dock/panel-sub-system-dock.js</Item>
+					<Item>ui/screens/choosers/culture-chooser/culture-chooser.js</Item>
+					<Item>ui/screens/choosers/tech-chooser/tech-chooser.js</Item>
+					<Item>ui/tech-tree/screen-tech-tree.js</Item>
 				</UIScripts>
 				<UpdateText>
-					<Item>data/ap_text_overrides.xml</Item>
+					<Item>text/en_us/ap_text_overrides.xml</Item>
 				</UpdateText>
+				<ImportFiles>
+					<Item>ui/tree-grid/tree-grid.chunk.js</Item>
+					<Item>ui/utilities/utilities-textprovider.chunk.js</Item>
+					<Item>ui/tech-civic-complete/screen-tech-civic-complete.js</Item>
+				</ImportFiles>
 			</Actions>
 		</ActionGroup>
 	</ActionGroups>
+	<!-- Top-level LocalizedText reference so the engine can pick up
+	     NEW LOC keys (e.g. mastery `_NAME_2` entries the companion
+	     emits) from the per-seed override file. Civ 7's <Replace>
+	     element inside <UpdateText> may only update existing rows;
+	     this block gives the engine an insert-or-replace pass. -->
+	<LocalizedText>
+		<File>text/en_us/ap_text_overrides.xml</File>
+	</LocalizedText>
 </Mod>

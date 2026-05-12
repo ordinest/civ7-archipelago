@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -67,6 +68,11 @@ try:
     from worlds.civ_7.Locations import LOCATION_TABLE  # type: ignore[import-not-found]
     from worlds.civ_7.data.extracted.node_names import (  # type: ignore[import-not-found]
         NODE_NAME_LOC_KEYS,
+    )
+    from worlds.civ_7.data.extracted.civ_unique_trees import (  # type: ignore[import-not-found]
+        ANTIQUITY_UNIQUE_CIVIC_TREES,
+        EXPLORATION_UNIQUE_CIVIC_TREES,
+        MODERN_UNIQUE_CIVIC_TREES,
     )
 except ImportError as exc:
     raise SystemExit(
@@ -162,6 +168,52 @@ def _build_code_to_modside_identifier() -> dict[int, str]:
 
 
 _CODE_TO_MODSIDE_IDENTIFIER: dict[int, str] = _build_code_to_modside_identifier()
+
+
+# Mastery locations key on "MASTERY:<node_id>" via the mod-side identifier.
+# Map each mastery identifier to the depth-2 LOC override key the mod's
+# modified tree-card.js looks up (`<base name LOC>_2`).
+def _mastery_loc_key(modside_identifier: str) -> str | None:
+    if not modside_identifier.startswith("MASTERY:"):
+        return None
+    node_id = modside_identifier.removeprefix("MASTERY:")
+    base_loc = NODE_NAME_LOC_KEYS.get(node_id)
+    if not base_loc:
+        return None
+    return f"{base_loc}_2"
+
+
+# Civ-unique civic tree node LOC keys grouped by Age + slot index.
+# For an AP location like "Antiquity Civ Civic Tree Slot 1 Completed",
+# we want to override every civ's first Antiquity-unique civic node's
+# display name with that location's AP item. Whichever civ the player
+# picks, their tree shows the AP item on the right node.
+_CIV_UNIQUE_TREES_BY_AGE: dict[str, dict[str, tuple[str, ...]]] = {
+    "Antiquity": ANTIQUITY_UNIQUE_CIVIC_TREES,
+    "Exploration": EXPLORATION_UNIQUE_CIVIC_TREES,
+    "Modern": MODERN_UNIQUE_CIVIC_TREES,
+}
+
+
+def _civ_unique_slot_loc_keys(age: str, slot: int) -> list[str]:
+    """Return every LOC key for the `slot`-th (1-indexed) node of every
+    civ-unique civic tree in the given Age. Civs with fewer than `slot`
+    nodes contribute nothing.
+    """
+    out: list[str] = []
+    trees = _CIV_UNIQUE_TREES_BY_AGE.get(age, {})
+    for _tree_id, nodes in trees.items():
+        if slot - 1 < len(nodes):
+            node_id = nodes[slot - 1]
+            loc_key = NODE_NAME_LOC_KEYS.get(node_id)
+            if loc_key is not None:
+                out.append(loc_key)
+    return out
+
+
+_CIV_CIVIC_SLOT_RE = re.compile(
+    r"^(Antiquity|Exploration|Modern) Civ Civic Tree Slot (\d+) Completed$"
+)
 
 
 # AP item code (int) -> AP item name (string) for delivery to the mod.
@@ -310,13 +362,6 @@ class Civ7Context(CommonContext):
             identifier = _CODE_TO_MODSIDE_IDENTIFIER.get(loc_code)
             if identifier is None:
                 continue
-            # Only tree-node locations have a LOC key the engine reads
-            # for display. Mastery, pantheon, religion, wonders,
-            # discoveries, civic-tree slots are pure checks without a
-            # vanilla tree-card name surface, so we skip them here.
-            loc_key = NODE_NAME_LOC_KEYS.get(identifier)
-            if loc_key is None:
-                continue
             item_name: str | None = None
             try:
                 item_name = self.item_names.lookup_in_slot(target_slot, item_code)
@@ -326,35 +371,77 @@ class Civ7Context(CommonContext):
                 item_name = resolve_item_code_to_name(item_code)
             if not item_name:
                 item_name = f"item_{item_code}"
-            overrides[loc_key] = item_name
+
+            # Tech / civic / civ-unique-civic base completions: identifier
+            # is the ProgressionTreeNodeType. Direct override via the
+            # node's Name LOC key.
+            loc_key = NODE_NAME_LOC_KEYS.get(identifier)
+            if loc_key is not None:
+                overrides[loc_key] = item_name
+                continue
+
+            # Mastery completions: identifier is "MASTERY:<node_id>".
+            # Our modified tree-card.js looks up `<base name LOC>_2`
+            # for the depth-2 tier name; emit that key.
+            mastery_key = _mastery_loc_key(identifier)
+            if mastery_key is not None:
+                overrides[mastery_key] = item_name
+                continue
+
+            # Civ-unique civic tree slot locations: identifier looks like
+            # "Antiquity Civ Civic Tree Slot 1 Completed". Override the
+            # slot-th node of every civ's unique tree in that Age so
+            # whichever civ the player picks, the AP item lands on the
+            # right node.
+            m = _CIV_CIVIC_SLOT_RE.match(identifier)
+            if m:
+                age, slot_str = m.group(1), m.group(2)
+                for slot_loc_key in _civ_unique_slot_loc_keys(age, int(slot_str)):
+                    overrides[slot_loc_key] = item_name
+                continue
+
+            # Other location categories (mastery, pantheon, religion,
+            # wonders, discoveries, legacy-path milestones,
+            # attribute-point thresholds, progressive age) do not have
+            # a 1-to-1 vanilla LOC key we can override. Their display
+            # is handled by a separate AP-tracker surface (planned).
         self._write_text_override_file(overrides)
 
     def _write_text_override_file(self, overrides: dict[str, str]) -> None:
-        """Write the mod's per-seed `data/ap_text_overrides.xml`.
+        """Write the mod's per-seed `text/en_us/ap_text_overrides.xml`.
 
-        Civ 7 reads this file via the modinfo's <UpdateText> action at
-        new-game-start. The file must be in the *installed* mod
-        directory (under %LOCALAPPDATA%) — Civ 7 does not load from the
-        source repo.
+        Civ 7 reads this file via the modinfo's <UpdateText> and
+        <LocalizedText> declarations at new-game-start.
+
+        Keys that vanilla already defines (e.g. LOC_TECH_AGRICULTURE_NAME)
+        are emitted with `<Replace>` semantics. Keys we are introducing
+        (mastery `_NAME_2` variants that have no vanilla row) are
+        emitted with `<Row>` (INSERT) — Civ 7's text loader rejects
+        `<Replace>` for non-existent rows on some builds, which would
+        leave the key unbound and our render-time `Locale.keyExists`
+        lookup would always miss.
         """
-        target_dir = MOD_INSTALL_DIR / "data"
+        target_dir = MOD_INSTALL_DIR / "text" / "en_us"
         target_dir.mkdir(parents=True, exist_ok=True)
         target = target_dir / "ap_text_overrides.xml"
         lines = [
             '<?xml version="1.0" encoding="utf-8"?>',
             '<!-- Generated by the Civ 7 AP companion. Per-seed; rewritten on each scout. -->',
             "<Database>",
-            "    <EnglishText>",
+            "\t<EnglishText>",
         ]
         for loc_key, item_name in sorted(overrides.items()):
             safe = (item_name
                     .replace("&", "&amp;")
+                    .replace('"', "&quot;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;"))
-            lines.append(f'        <Replace Tag="{loc_key}">')
-            lines.append(f"            <Text>{safe}</Text>")
-            lines.append("        </Replace>")
-        lines.append("    </EnglishText>")
+            # `<Replace>` for both new and existing keys, mirroring
+            # SeelingCat's "Et Cetera" exactly. Et Cetera introduces
+            # new `_NAME_2` keys via <Replace> and the engine accepts
+            # them, so the element name itself isn't the discriminator.
+            lines.append(f'\t\t<Replace Tag="{loc_key}" Text="{safe}"/>')
+        lines.append("\t</EnglishText>")
         lines.append("</Database>")
         target.write_text("\n".join(lines) + "\n", encoding="utf-8")
         logger.info(

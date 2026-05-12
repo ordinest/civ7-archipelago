@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Per-seed text overrides for Archipelago.
+  Placeholder; the companion app rewrites this in the installed mod
+  directory after scouting the AP server. Civ 7 reads it via
+  <UpdateText> + <LocalizedText> in archipelago.modinfo at
+  new-game-start.
+-->
+<Database>
+	<EnglishText>
+	</EnglishText>
+</Database>
