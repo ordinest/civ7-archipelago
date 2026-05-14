@@ -349,6 +349,86 @@ def extract_discoveries() -> None:
 
 
 # ---------------------------------------------------------------------
+# Unit replacements (civ-unique unit -> base unit, with civ trait)
+# ---------------------------------------------------------------------
+
+
+def _parse_unit_trait_map(units_xml: Path) -> dict[str, str]:
+    """Return {UnitType: TraitType} from the <Units> table; only rows
+    that carry a TraitType (civ-unique units) are included."""
+    out: dict[str, str] = {}
+    tree = ET.parse(units_xml)
+    for row in _find_rows(tree, "Units"):
+        utype = row.get("UnitType")
+        trait = row.get("TraitType")
+        if utype and trait:
+            out[utype] = trait
+    return out
+
+
+def _parse_unit_replaces(units_xml: Path) -> list[tuple[str, str]]:
+    """Return list of (civ_unique_unit, base_unit) from <UnitReplaces>."""
+    out: list[tuple[str, str]] = []
+    tree = ET.parse(units_xml)
+    for row in _find_rows(tree, "UnitReplaces"):
+        civ = row.get("CivUniqueUnitType")
+        base = row.get("ReplacesUnitType")
+        if civ and base:
+            out.append((civ, base))
+    return out
+
+
+def extract_unit_replaces() -> None:
+    """Emit unit_replaces.py: a per-Age map collapsing civ-unique units
+    into the base unit they replace, paired with the civ trait that
+    gates them. The apworld uses this to define base-unit-type AP items
+    that the mod resolves to the player's matching unit at delivery.
+
+    Output shape:
+        BASE_UNIT_TO_VARIANTS["Antiquity"]["UNIT_SLINGER"] = {
+            "TRAIT_MAYA": "UNIT_HULCHE",
+            "TRAIT_MISSISSIPPIAN": "UNIT_BURNING_ARROW",
+            ...
+        }
+    """
+    per_age: dict[str, dict[str, dict[str, str]]] = {}
+    for age, age_dir in AGE_DIRS.items():
+        units_xml = MODULES_ROOT / age_dir / "data" / "units.xml"
+        if not units_xml.exists():
+            per_age[age] = {}
+            continue
+        trait_map = _parse_unit_trait_map(units_xml)
+        replaces = _parse_unit_replaces(units_xml)
+        age_table: dict[str, dict[str, str]] = {}
+        for civ_unit, base_unit in replaces:
+            trait = trait_map.get(civ_unit)
+            if not trait:
+                # Unit replaces something but carries no trait — skip; can't
+                # determine which civ it belongs to.
+                continue
+            age_table.setdefault(base_unit, {})[trait] = civ_unit
+        per_age[age] = age_table
+
+    lines = [
+        "# Per-Age table: base_unit_type -> {civ_trait: civ_unique_unit}\n",
+        "# Used by the apworld + mod to deliver \"Tier N <class> Unit\"\n",
+        "# AP items resolved at grant time to the player's civ-matching\n",
+        "# unit variant (default = base unit if no trait matches).\n\n",
+        "BASE_UNIT_TO_VARIANTS: dict[str, dict[str, dict[str, str]]] = {\n",
+    ]
+    for age, table in per_age.items():
+        lines.append(f"    {age!r}: {{\n")
+        for base, variants in sorted(table.items()):
+            lines.append(f"        {base!r}: {{\n")
+            for trait, civ_unit in sorted(variants.items()):
+                lines.append(f"            {trait!r}: {civ_unit!r},\n")
+            lines.append("        },\n")
+        lines.append("    },\n")
+    lines.append("}\n")
+    _write_module("unit_replaces", "".join(lines))
+
+
+# ---------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------
 
@@ -369,6 +449,7 @@ def main() -> int:
     extract_wonders()
     extract_pantheon_beliefs()
     extract_discoveries()
+    extract_unit_replaces()
 
     print("[extract] done")
     return 0
