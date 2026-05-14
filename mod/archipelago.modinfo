@@ -43,6 +43,7 @@
 					<Item>ui/tech-tree/screen-tech-tree.js</Item>
 				</UIScripts>
 				<UpdateText>
+					<Item>text/en_us/ap_hidden_nodes_fallback.xml</Item>
 					<Item>text/en_us/ap_text_overrides.xml</Item>
 				</UpdateText>
 				<ImportFiles>
@@ -67,6 +68,11 @@
 	     element inside <UpdateText> may only update existing rows;
 	     this block gives the engine an insert-or-replace pass. -->
 	<LocalizedText>
+		<!-- Default fallback names for the hidden-AP-node Name keys.
+		     Used when no AP companion is connected (single player with
+		     mod installed, or pre-scout window). Listed FIRST so the
+		     per-seed companion file below wins on collision. -->
+		<File>text/en_us/ap_hidden_nodes_fallback.xml</File>
 		<File>text/en_us/ap_text_overrides.xml</File>
 	</LocalizedText>
 </Mod>
