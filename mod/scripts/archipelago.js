@@ -135,6 +135,15 @@
             const nodeId = node.ProgressionTreeNodeType;
             const depth = data.nodeDepth;
 
+            // Q1: ignore completion events on hidden AP nodes. Those fire
+            // when we call GRANT_TREE_NODE on a hidden node ourselves;
+            // they must not trigger a location check (would loop the AP
+            // server back into delivering the same item it just sent).
+            if (nodeId.indexOf("NODE_AP_") === 0) {
+                log("skipping completion event on hidden AP node: " + nodeId);
+                return;
+            }
+
             // Cap 5: civ-unique civic tree node completion. Detect by
             // matching the event's tree hash to the player's civ-unique
             // tree hash.
@@ -296,14 +305,39 @@
     // Item granting: AP delivery -> in-game runtime API
     // -------------------------------------------------------------
 
+    /** Resolve a source-node id (e.g. NODE_TECH_AQ_POTTERY) to its
+     *  hidden AP counterpart (NODE_AP_TECH_AQ_POTTERY). The hidden
+     *  node carries the unlock rows the source used to own; granting
+     *  it via GRANT_TREE_NODE applies those unlocks without touching
+     *  the player's vanilla tree progress.
+     */
+    function hiddenIdFor(sourceNodeTypeName) {
+        if (sourceNodeTypeName.indexOf("NODE_") === 0) {
+            return "NODE_AP_" + sourceNodeTypeName.substring("NODE_".length);
+        }
+        return "NODE_AP_" + sourceNodeTypeName;
+    }
+
+    /** Common-tree AP item grant: route through hidden AP node so the
+     *  unlock rows fire but vanilla tree progress is untouched. Used
+     *  for capability 1 (decoupled tech / civic unlocks).
+     */
     function grantTreeNode(nodeTypeName) {
         if (grantedNodes.has(nodeTypeName)) {
             log("grantTreeNode: already granted " + nodeTypeName + ", skipping");
             return "ok";
         }
-        const info = GameInfo.ProgressionTreeNodes.lookup(nodeTypeName);
+        const hiddenId = hiddenIdFor(nodeTypeName);
+        const info = GameInfo.ProgressionTreeNodes.lookup(hiddenId);
         if (!info) {
-            log("grantTreeNode: deferred until later Age (" + nodeTypeName + ")");
+            log("grantTreeNode: deferred until later Age (" + hiddenId + ")");
+            return "deferred";
+        }
+        const node = Game.ProgressionTrees.getNode(GameContext.localPlayerID, hiddenId);
+        if (!node) {
+            // Defined in the database but not attached to the player —
+            // the corresponding Age tree isn't active yet.
+            log("grantTreeNode: deferred, hidden node not yet attached (" + hiddenId + ")");
             return "deferred";
         }
         const args = { ProgressionTreeNodeType: info.$index, FullyUnlock: 1 };
@@ -313,17 +347,46 @@
             args
         );
         grantedNodes.add(nodeTypeName);
-        log("granted tree node: " + nodeTypeName);
+        log("granted tree node via hidden " + hiddenId + " (source " + nodeTypeName + ")");
+        return "ok";
+    }
+
+    /** Direct grant on a vanilla source node. Used by ideology-tier
+     *  delivery and civ-unique civic-slot delivery — those don't go
+     *  through the Q1 hidden-node mechanism because their source nodes
+     *  aren't part of the common-tree decoupling scope.
+     */
+    function grantVanillaTreeNode(nodeTypeName) {
+        const info = GameInfo.ProgressionTreeNodes.lookup(nodeTypeName);
+        if (!info) {
+            log("grantVanillaTreeNode: deferred until later Age (" + nodeTypeName + ")");
+            return "deferred";
+        }
+        const args = { ProgressionTreeNodeType: info.$index, FullyUnlock: 1 };
+        Game.PlayerOperations.sendRequest(
+            GameContext.localPlayerID,
+            PlayerOperationTypes.GRANT_TREE_NODE,
+            args
+        );
+        log("granted vanilla tree node: " + nodeTypeName);
         return "ok";
     }
 
     /** Grant a second depth tier (mastery) on an existing tree node.
-     *  Uses GRANT_TREE_NODE again with FullyUnlock=0 (advance one tier).
+     *  Routes through the hidden AP node which carries both depth=1
+     *  and depth=2 unlock rows; FullyUnlock=0 advances one tier on the
+     *  hidden node, applying just the depth=2 unlocks.
      */
     function grantTreeNodeMastery(nodeTypeName) {
-        const info = GameInfo.ProgressionTreeNodes.lookup(nodeTypeName);
+        const hiddenId = hiddenIdFor(nodeTypeName);
+        const info = GameInfo.ProgressionTreeNodes.lookup(hiddenId);
         if (!info) {
-            log("grantTreeNodeMastery: deferred until later Age (" + nodeTypeName + ")");
+            log("grantTreeNodeMastery: deferred until later Age (" + hiddenId + ")");
+            return "deferred";
+        }
+        const node = Game.ProgressionTrees.getNode(GameContext.localPlayerID, hiddenId);
+        if (!node) {
+            log("grantTreeNodeMastery: deferred, hidden node not yet attached (" + hiddenId + ")");
             return "deferred";
         }
         const args = { ProgressionTreeNodeType: info.$index, FullyUnlock: 0 };
@@ -332,7 +395,7 @@
             PlayerOperationTypes.GRANT_TREE_NODE,
             args
         );
-        log("granted mastery on " + nodeTypeName);
+        log("granted mastery via hidden " + hiddenId + " (source " + nodeTypeName + ")");
         return "ok";
     }
 
@@ -356,7 +419,8 @@
         }
         const node = tree.nodes[tier - 1];
         if (!node) return false;
-        return grantTreeNode(node.nodeType) === "ok";
+        // Ideology nodes aren't in the Q1 hidden-node set; grant directly.
+        return grantVanillaTreeNode(node.nodeType) === "ok";
     }
 
     /** Advance a legacy path by one milestone. Confirmed API. */
@@ -416,7 +480,10 @@
                 return "ok";  // soft success — civs with fewer slots
             }
             const target = nodes[slot - 1];
-            return grantTreeNode(target.ProgressionTreeNodeType);
+            // Civ-unique civic trees are outside the Q1 decoupling
+            // scope; grant the vanilla node directly so its unlock rows
+            // apply unchanged.
+            return grantVanillaTreeNode(target.ProgressionTreeNodeType);
         } catch (e) {
             log("grantCivCivicSlot error: " + e);
             return "error";
@@ -529,7 +596,7 @@
     Game.AP_Status = function () {
         return JSON.stringify({
             mod: "civ7-archipelago",
-            version: "0.4.0",
+            version: "0.5.0",
             queueLength: unsentLocations.length,
             grantedCount: grantedNodes.size,
             pendingCount: pendingItems.length,
@@ -560,6 +627,6 @@
     engine.on("WonderCompleted", onWonderCompleted);
     engine.on("NotificationDismissed", onNotificationDismissed);
 
-    log("civ7-archipelago runtime v0.4.0 loaded; "
+    log("civ7-archipelago runtime v0.5.0 loaded; "
         + "item table size = " + Object.keys(Game._AP_ITEM_TO_NODE || {}).length);
 })();

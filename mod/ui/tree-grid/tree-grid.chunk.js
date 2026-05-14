@@ -199,6 +199,12 @@ class TreeGrid {
         console.warn("model-rectangular-grid: No information for node with id: ", structureNodeData.nodeType);
         return;
       }
+      // civ7-archipelago: hidden AP nodes are internal grant targets,
+      // not player-facing tree content. Skip from all render paths.
+      if (nodeInfo.ProgressionTreeNodeType
+          && String(nodeInfo.ProgressionTreeNodeType).indexOf("NODE_AP_") === 0) {
+        return;
+      }
       const id = structureNodeData.nodeType.toString();
       const identifier = id;
       graph.setNode(identifier, { label: `${identifier}` });

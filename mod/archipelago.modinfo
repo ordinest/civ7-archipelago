@@ -50,6 +50,14 @@
 					<Item>ui/utilities/utilities-textprovider.chunk.js</Item>
 					<Item>ui/tech-civic-complete/screen-tech-civic-complete.js</Item>
 				</ImportFiles>
+				<UpdateDatabase>
+					<!-- Q1 unlock-decoupling: hidden AP nodes hosted in
+					     per-Age tech and civic trees. Additive only;
+					     vanilla unlock rows are unchanged until the
+					     companion + runtime side is wired and we add
+					     ap_strip_vanilla_unlocks.xml. -->
+					<Item>data/ap_hidden_nodes.xml</Item>
+				</UpdateDatabase>
 			</Actions>
 		</ActionGroup>
 	</ActionGroups>

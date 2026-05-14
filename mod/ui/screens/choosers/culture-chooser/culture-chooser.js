@@ -258,6 +258,13 @@ function getAllCultureNodes(player) {
   if (!available) return out;
   const activeNodeType = getActiveCultureNodeType(player);
   for (const nodeType of available) {
+    // civ7-archipelago: hidden AP nodes are internal grant targets,
+    // not player-researchable. Skip from the chooser.
+    const info = GameInfo.ProgressionTreeNodes.lookup(nodeType);
+    if (info && info.ProgressionTreeNodeType
+        && String(info.ProgressionTreeNodeType).indexOf("NODE_AP_") === 0) {
+      continue;
+    }
     const isActiveResearch = nodeType === activeNodeType;
     const node = buildCultureNodeData(player, nodeType, isActiveResearch);
     if (node) out.push(node);
